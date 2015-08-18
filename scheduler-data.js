@@ -92,6 +92,7 @@ function CollectionPerformer(collection) {
 
     this.save = function(event) {
         event = parseEventData(event);
+        event.projectId = Session.get('projectId');
 
         if(event.id.indexOf("#") + 1)
             return false;
