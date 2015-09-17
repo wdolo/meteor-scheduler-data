@@ -39,7 +39,7 @@ function meteorStart(collection) {
 
         added: function(data) {
             var eventData = parseEventData(data);
-            if(!self.getEvent(eventData.id))
+            if(!self.getEvent(eventData._id))
                 events.push(eventData);
 
             //Timeout need for recurring events.
@@ -54,7 +54,7 @@ function meteorStart(collection) {
 
         changed: function(data) {
             var eventData = parseEventData(data),
-                event = self.getEvent(eventData.id);
+                event = self.getEvent(eventData._id);
 
             if(!event)
                 return false;
@@ -62,13 +62,13 @@ function meteorStart(collection) {
             for(var key in eventData)
                 event[key] = eventData[key];
 
-            self.updateEvent(eventData.id);
+            self.updateEvent(eventData._id);
             return true;
         },
 
         removed: function(data) {
-            if(self.getEvent(data.id))
-                self.deleteEvent(data.id);
+            if(self.getEvent(data._id))
+                self.deleteEvent(data._id);
         }
 
     });
@@ -94,14 +94,20 @@ function CollectionPerformer(collection) {
         event = parseEventData(event);
         event.projectId = Session.get('projectId');
 
-        if(event.id.indexOf("#") + 1)
+        if(event._id.indexOf("#") + 1)
             return false;
 
-        var savedEventData = this.findEvent(event.id);
-        if(savedEventData)
-            collection.update({_id: savedEventData._id}, {$set: event});
-        else
+        var savedEventData = this.findEvent(event._id);
+        if(savedEventData) {
+            collection.update({_id: savedEventData._id}, {$set: {
+                text: event.text,
+                start_date: event.start_date,
+                end_date: event.end_date
+            }});
+        }
+        else {
             collection.insert(event);
+        }
 
         return true;
     };
@@ -113,20 +119,17 @@ function CollectionPerformer(collection) {
     };
 
     this.findEvent = function(eventId) {
-        return collection.findOne({id: eventId});
+        return collection.findOne({_id: eventId});
     };
 }
 
 function parseEventData(event) {
     var eventData = {};
     for(var eventProperty in event) {
-        if(eventProperty.charAt(0) == "_")
-            continue;
-
         eventData[eventProperty] = event[eventProperty];
 
-        if(eventProperty == "id")
-            eventData[eventProperty] = eventData[eventProperty].toString();
+        if(eventProperty == "_id")
+            eventData["id"] = eventData[eventProperty].toString();
     }
 
     return eventData;
