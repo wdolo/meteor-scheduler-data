@@ -28,6 +28,9 @@ function meteorStart(collection) {
     }));
 
     gEventsCollection.add(this.attachEvent("onEventAdded", function(eventId, event) {
+        console.log('scheduling here');
+        console.log(eventId);
+        console.log(event);
         CollectionPerformerObj.save(event);
     }));
 
@@ -93,9 +96,6 @@ function CollectionPerformer(collection) {
     this.save = function(event) {
         event = parseEventData(event);
         event.projectId = Session.get('projectId');
-
-        if(event._id.indexOf("#") + 1)
-            return false;
 
         var savedEventData = this.findEvent(event._id);
         if(savedEventData) {
