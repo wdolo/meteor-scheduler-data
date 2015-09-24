@@ -2,8 +2,12 @@ var gCollectionObserver = null,
     gEventsCollection = null;
 
 function meteorStart(collection) {
+    Session.set('scheduleReady', false);
+    var self = this,
+        events = [],
+        render = null;
+
     gEventsCollection = new DataCollection();
-    var collectionCursor = null ;
 
     if(arguments.length == 2) {
         collectionCursor = arguments[0];
@@ -20,6 +24,7 @@ function meteorStart(collection) {
     }));
 
     gEventsCollection.add(this.attachEvent("onEventChanged", function(eventId, event) {
+        console.log('changed');
         CollectionPerformerObj.save(event);
     }));
 
@@ -27,33 +32,48 @@ function meteorStart(collection) {
         CollectionPerformerObj.remove(eventId);
     }));
 
+
+
     gEventsCollection.add(this.attachEvent("onEventAdded", function(eventId, event) {
-        console.log('scheduling here');
-        console.log(eventId);
-        console.log(event);
-        CollectionPerformerObj.save(event);
+        console.log('added');
+        var id = CollectionPerformerObj.save(event);
+        if (self.getEvent(id)){
+            console.log('yo')
+        }
+            //self.deleteEvent(id);
     }));
 
-    var self = this,
-        events = [],
-        render = null;
+    collectionCursor.fetch().forEach(function (data){
+        var eventData = parseEventData(data);
+        if(!self.getEvent(eventData._id))
+            events.push(eventData);
+        console.log(events);
+        //Timeout need for recurring events.
+    });
+    setTimeout(function() {
+        self.parse(events, "json");
+        events = [];
+    }, 5);
+
+
 
     gCollectionObserver = collectionCursor.observe({
 
-        added: function(data) {
-            var eventData = parseEventData(data);
-            if(!self.getEvent(eventData._id))
-                events.push(eventData);
-
-            //Timeout need for recurring events.
-            clearTimeout(render);
-            render = setTimeout(function() {
-                self.parse(events, "json");
-                events = [];
-            }, 5);
-
-
-        },
+        //added: function(data) {
+        //    var eventData = parseEventData(data);
+        //    if(!self.getEvent(eventData._id))
+        //        events.push(eventData);
+        //    console.log('addedObservation');
+        //    console.log(events);
+        //    //Timeout need for recurring events.
+        //    clearTimeout(render);
+        //    render = setTimeout(function() {
+        //        self.parse(events, "json");
+        //        events = [];
+        //    }, 5);
+        //
+        //
+        //},
 
         changed: function(data) {
             var eventData = parseEventData(data),
@@ -79,8 +99,10 @@ function meteorStart(collection) {
 }
 
 function meteorStop() {
-    if(gCollectionObserver)
+    if(gCollectionObserver){
+        console.log('here');
         gCollectionObserver.stop();
+    }
 
     var self = this;
     if(gEventsCollection) {
@@ -99,17 +121,17 @@ function CollectionPerformer(collection) {
 
         var savedEventData = this.findEvent(event._id);
         if(savedEventData) {
-            collection.update({_id: savedEventData._id}, {$set: {
+            return collection.update({_id: savedEventData._id}, {$set:
+            {
                 text: event.text,
                 start_date: event.start_date,
                 end_date: event.end_date
-            }});
+            }
+            });
         }
         else {
-            collection.insert(event);
+            return collection.insert(event);
         }
-
-        return true;
     };
 
     this.remove = function(eventId) {
@@ -125,14 +147,19 @@ function CollectionPerformer(collection) {
 
 function parseEventData(event) {
     var eventData = {};
-    for(var eventProperty in event) {
-        eventData[eventProperty] = event[eventProperty];
 
-        if(eventProperty == "_id")
-            eventData["id"] = eventData[eventProperty].toString();
+    for(var eventProperty in event) {
+        if(eventProperty.charAt(0) == "_")
+            continue;
+
+        if (eventProperty == "id") {
+            event["id"] = event["_id"];
+        } else {
+            eventData[eventProperty] = event[eventProperty];
+        }
     }
 
-    return eventData;
+    return event;
 }
 
 function DataCollection() {
