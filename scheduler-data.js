@@ -117,11 +117,9 @@ function meteorStop() {
 function CollectionPerformer(collection) {
 
     this.save = function(event) {
-        var anEvent = parseEventData(event);
+        var anEvent = parseEventData(event),
+            id;
         anEvent.projectId = Session.get('projectId');
-
-        //if(event.id.indexOf("#") + 1)
-        //    return false;
 
         var savedEventData = this.findEvent(anEvent._id);
         if(savedEventData) {
@@ -133,7 +131,7 @@ function CollectionPerformer(collection) {
             });
         }
         else {
-            var id = collection.insert(anEvent);
+            id = collection.insert(anEvent);
             anEvent._id = id;
             scheduler.updateEvent(anEvent.id)
         }
