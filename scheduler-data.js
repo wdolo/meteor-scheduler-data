@@ -5,6 +5,7 @@ function meteorStart(collection) {
     Session.set('scheduleReady', false);
     var self = this,
         events = [],
+        collectionCursor,
         render = null;
 
     gEventsCollection = new DataCollection();
@@ -19,7 +20,7 @@ function meteorStart(collection) {
     var CollectionPerformerObj = new CollectionPerformer(collection);
 
     gEventsCollection.add(this.attachEvent("onEventLoading", function(event) {
-        CollectionPerformerObj.save(event);
+        //CollectionPerformerObj.save(event);
         return true;
     }));
 
@@ -45,7 +46,7 @@ function meteorStart(collection) {
 
     collectionCursor.fetch().forEach(function (data){
         var eventData = parseEventData(data);
-        if(!self.getEvent(eventData._id))
+        if(!self.getEvent(eventData.id))
             events.push(eventData);
         console.log(events);
         //Timeout need for recurring events.
@@ -77,7 +78,7 @@ function meteorStart(collection) {
 
         changed: function(data) {
             var eventData = parseEventData(data),
-                event = self.getEvent(eventData._id);
+                event = self.getEvent(eventData.id);
 
             if(!event)
                 return false;
@@ -90,8 +91,8 @@ function meteorStart(collection) {
         },
 
         removed: function(data) {
-            if(self.getEvent(data._id))
-                self.deleteEvent(data._id);
+            if(self.getEvent(data.id))
+                self.deleteEvent(data.id);
         }
 
     });
@@ -116,21 +117,25 @@ function meteorStop() {
 function CollectionPerformer(collection) {
 
     this.save = function(event) {
-        event = parseEventData(event);
-        event.projectId = Session.get('projectId');
+        var anEvent = parseEventData(event);
+        anEvent.projectId = Session.get('projectId');
 
-        var savedEventData = this.findEvent(event._id);
+        //if(event.id.indexOf("#") + 1)
+        //    return false;
+
+        var savedEventData = this.findEvent(anEvent._id);
         if(savedEventData) {
-            return collection.update({_id: savedEventData._id}, {$set:
-            {
-                text: event.text,
-                start_date: event.start_date,
-                end_date: event.end_date
+            return collection.update({_id: savedEventData._id}, {$set: {
+                text: anEvent.text,
+                start_date: anEvent.start_date,
+                end_date: anEvent.end_date
             }
             });
         }
         else {
-            return collection.insert(event);
+            var id = collection.insert(anEvent);
+            anEvent._id = id;
+            scheduler.updateEvent(anEvent.id)
         }
     };
 
@@ -146,18 +151,8 @@ function CollectionPerformer(collection) {
 }
 
 function parseEventData(event) {
-    var eventData = {};
-
-    for(var eventProperty in event) {
-        if(eventProperty.charAt(0) == "_")
-            continue;
-
-        if (eventProperty == "id") {
-            event["id"] = event["_id"];
-        } else {
-            eventData[eventProperty] = event[eventProperty];
-        }
-    }
+    if (event._id)
+        event["id"] = event["_id"];
 
     return event;
 }
