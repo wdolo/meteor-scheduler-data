@@ -15,7 +15,7 @@ function meteorStart(collection) {
         collection = arguments[1];
     }
     else
-        collectionCursor = collection.find();
+        collectionCursor = collection.find({projectId:Session.get('projectId')});
 
     var CollectionPerformerObj = new CollectionPerformer(collection);
 
